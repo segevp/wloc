@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+
+message Request {
+  message RequestWifi {
+    optional string mac = 1;
+  }
+  repeated RequestWifi wifis = 2;
+  optional int32 noise = 3 [default = 0];
+  optional int32 limit = 4 [default = 100];
+  optional string source = 5;
+}
