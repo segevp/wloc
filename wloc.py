@@ -1,3 +1,5 @@
+#!/bin/env python3
+
 from typing import List
 import request_pb2
 import response_pb2
