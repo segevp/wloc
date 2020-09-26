@@ -35,24 +35,24 @@ def format_len(array) -> bytes:
     return len(array).to_bytes(2, 'big')
 
 
-def create_item(header_text: bytes) -> bytes:
+def build_item(header_text: bytes) -> bytes:
     return b'%b%b' % (format_len(header_text), header_text)
 
 
 def build_items(headers: List[bytes]) -> bytes:
     final_headers = NUL_SOH + b'%b' + NUL_NUL + NUL_SOH + NUL_NUL
-    only_headers = b''.join([create_item(header) for header in headers])
+    only_headers = b''.join([build_item(header) for header in headers])
     final_headers = final_headers % only_headers
     return final_headers
 
 
-def build_request(macs: List[str], limit: int = 3, noise: int = 0) -> request_pb2.Request:
-    request = request_pb2.Request()
-    request.limit = limit
-    request.noise = noise
+def build_request_pb(macs: List[str], limit: int = 3, noise: int = 0) -> request_pb2.Request:
+    request_pb = request_pb2.Request()
+    request_pb.limit = limit
+    request_pb.noise = noise
     for mac in macs:
-        request.wifis.add(mac=mac)
-    return request
+        request_pb.wifis.add(mac=mac)
+    return request_pb
 
 
 def compose_data(message: request_pb2.Request, headers: List[bytes]) -> bytes:
@@ -80,7 +80,7 @@ def create_kml(response_pb: response_pb2.Response) -> str:
     return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
 
-msg = build_request(['E0:CE:C3:8C:1F:D7'])
+msg = build_request_pb(['E0:CE:C3:8C:1F:D7'])
 kml = create_kml(query(msg))
 with open('out.kml', 'w') as f:
     f.write(kml)
