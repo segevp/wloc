@@ -86,10 +86,15 @@ class PBFunctions:
         return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
 
-msg = PBFunctions.build_request(['E0:CE:C3:8C:1F:D7'])
-binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
-query_results = binary_handler.query()
-response = PBFunctions.parse_response(query_results)
-kml = PBFunctions.create_kml(response)
-with open('out.kml', 'w') as f:
-    f.write(kml)
+def main():
+    msg = PBFunctions.build_request(['E0:CE:C3:8C:1F:D7'])
+    binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
+    query_results = binary_handler.query()
+    response = PBFunctions.parse_response(query_results)
+    kml = PBFunctions.create_kml(response)
+    with open('out.kml', 'w') as f:
+        f.write(kml)
+
+
+if __name__ == "__main__":
+    main()
