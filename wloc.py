@@ -15,6 +15,7 @@ HEADERS = [LOCALE, IDENTIFIER, VERSION]
 URL = 'https://gs-loc.apple.com/clls/wloc'
 HTTP_HEADERS = {'Content-Type': 'application/x-www-form-urlencoded',
                 'User-Agent': 'locationd/1756.1.15 CFNetwork/711.5.6 Darwin/14.0.0'}
+HTTP_RESPONSE_OFFSET = 10
 
 KML_FORMAT = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -31,56 +32,64 @@ KML_PLACEMARK = """<Placemark>
 </Placemark>"""
 
 
-def format_len(array) -> bytes:
-    return len(array).to_bytes(2, 'big')
+class BinaryHandler:
+    def __init__(self, headers: List[bytes] = None, serialized_message: bytes = None):
+        self.headers = headers
+        self.serialized_message = serialized_message
+
+    @staticmethod
+    def format_len(array) -> bytes:
+        return len(array).to_bytes(2, 'big')
+
+    @classmethod
+    def build_item(cls, header_text: bytes) -> bytes:
+        return b'%b%b' % (cls.format_len(header_text), header_text)
+
+    def build_headers(self) -> bytes:
+        final_headers = NUL_SOH + b'%b' + NUL_NUL + NUL_SOH + NUL_NUL
+        only_headers = b''.join([self.build_item(header) for header in self.headers])
+        final_headers = final_headers % only_headers
+        return final_headers
+
+    def compose_data(self) -> bytes:
+        return self.build_headers() + self.build_item(self.serialized_message)
+
+    def query(self) -> bytes:
+        data = self.compose_data()
+        response = requests.post(URL, data=data, headers=HTTP_HEADERS)
+        return response.content
 
 
-def build_item(header_text: bytes) -> bytes:
-    return b'%b%b' % (format_len(header_text), header_text)
+class PBFunctions:
+
+    @staticmethod
+    def build_request(macs: List[str], limit: int = 100, noise: int = 0) -> request_pb2.Request:
+        request_pb = request_pb2.Request()
+        request_pb.limit = limit
+        request_pb.noise = noise
+        for mac in macs:
+            request_pb.wifis.add(mac=mac)
+        return request_pb
+
+    @staticmethod
+    def parse_response(query_response: bytes) -> response_pb2.Response:
+        response_pb = response_pb2.Response()
+        response_pb.ParseFromString(query_response[HTTP_RESPONSE_OFFSET:])
+        return response_pb
+
+    @staticmethod
+    def create_kml(response_pb: response_pb2.Response) -> str:
+        placemarks = [KML_PLACEMARK.format(bssid=wifi.mac,
+                                           latitude=wifi.location.latitude * (10 ** -8),
+                                           longitude=wifi.location.longitude * (10 ** -8),
+                                           altitude=wifi.location.altitude) for wifi in response_pb.wifis]
+        return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
 
-def build_items(headers: List[bytes]) -> bytes:
-    final_headers = NUL_SOH + b'%b' + NUL_NUL + NUL_SOH + NUL_NUL
-    only_headers = b''.join([build_item(header) for header in headers])
-    final_headers = final_headers % only_headers
-    return final_headers
-
-
-def build_request_pb(macs: List[str], limit: int = 3, noise: int = 0) -> request_pb2.Request:
-    request_pb = request_pb2.Request()
-    request_pb.limit = limit
-    request_pb.noise = noise
-    for mac in macs:
-        request_pb.wifis.add(mac=mac)
-    return request_pb
-
-
-def compose_data(message: request_pb2.Request, headers: List[bytes]) -> bytes:
-    serialized_message = message.SerializeToString()
-    return build_items(headers) + format_len(serialized_message) + serialized_message
-
-
-def query(request_pb: request_pb2.Request) -> response_pb2.Response:
-    data = compose_data(request_pb, HEADERS)
-    response = requests.post(URL, data=data, headers=HTTP_HEADERS)
-    return parse_response(response.content)
-
-
-def parse_response(query_response: bytes) -> response_pb2.Response:
-    response_pb = response_pb2.Response()
-    response_pb.ParseFromString(query_response[10:])
-    return response_pb
-
-
-def create_kml(response_pb: response_pb2.Response) -> str:
-    placemarks = [KML_PLACEMARK.format(bssid=wifi.mac,
-                                       latitude=wifi.location.latitude * (10 ** -8),
-                                       longitude=wifi.location.longitude * (10 ** -8),
-                                       altitude=wifi.location.altitude) for wifi in response_pb.wifis]
-    return KML_FORMAT.format(placemarks='\n'.join(placemarks))
-
-
-msg = build_request_pb(['E0:CE:C3:8C:1F:D7'])
-kml = create_kml(query(msg))
+msg = PBFunctions.build_request(['E0:CE:C3:8C:1F:D7'])
+binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
+query_results = binary_handler.query()
+response = PBFunctions.parse_response(query_results)
+kml = PBFunctions.create_kml(response)
 with open('out.kml', 'w') as f:
     f.write(kml)
