@@ -101,17 +101,15 @@ def parse_args():
     parser.add_argument("-l", "--limit", help="limit query results (default: 100)", type=int, default=100)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-b', '--bssid', nargs='+')
-    # group.add_argument('-f', '--file', help="load bssids from file", type=str, nargs='?')
+    group.add_argument('-f', '--file', help="load bssids from file", type=str, nargs='?')
     args = parser.parse_args()
-    # return args.file, args.bssid, args.limit
-    return args.bssid, args.limit
+    return args.file, args.bssid, args.limit
 
 
 def main():
-    # file, macs, query_limit = parse_args()
-    macs, query_limit = parse_args()
-    # if file:
-    #     macs = get_lines(file)
+    file, macs, query_limit = parse_args()
+    if file:
+        macs = get_lines(file)
     msg = PBFunctions.build_request(macs, query_limit)
     binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
     query_results = binary_handler.query()
