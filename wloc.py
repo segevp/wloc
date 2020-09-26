@@ -5,7 +5,6 @@ import request_pb2
 import response_pb2
 import requests
 import argparse
-import os.path
 
 NUL_SOH = b'\x00\x01'
 NUL_NUL = b'\x00\x00'
@@ -78,13 +77,21 @@ class PBFunctions:
         response_pb.ParseFromString(query_response[HTTP_RESPONSE_OFFSET:])
         return response_pb
 
-    @staticmethod
-    def create_kml(response_pb: response_pb2.Response) -> str:
-        placemarks = [KML_PLACEMARK.format(bssid=wifi.mac,
-                                           latitude=wifi.location.latitude * (10 ** -8),
-                                           longitude=wifi.location.longitude * (10 ** -8),
+    @classmethod
+    def create_kml(cls, response_pb: response_pb2.Response) -> str:
+        placemarks = [KML_PLACEMARK.format(bssid=cls.format_mac_address(wifi.mac),
+                                           latitude=cls.format_coordinate(wifi.location.latitude),
+                                           longitude=cls.format_coordinate(wifi.location.longitude),
                                            altitude=wifi.location.altitude) for wifi in response_pb.wifis]
         return KML_FORMAT.format(placemarks='\n'.join(placemarks))
+
+    @staticmethod
+    def format_mac_address(mac):
+        return ':'.join([f'0{byte}' if len(byte) == 1 else byte for byte in mac.split(':')])
+
+    @staticmethod
+    def format_coordinate(coordinate):
+        return coordinate * (10 ** -8)
 
 
 def get_lines(file_path: str) -> Iterator[str]:
