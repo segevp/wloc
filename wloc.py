@@ -108,8 +108,7 @@ def parse_args():
 
 def main():
     file, macs, query_limit = parse_args()
-    if file:
-        macs = get_lines(file)
+    macs = get_lines(file) if file else macs
     msg = PBFunctions.build_request(macs, query_limit)
     binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
     query_results = binary_handler.query()
