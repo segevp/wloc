@@ -1,9 +1,11 @@
 #!/bin/env python3
 
-from typing import List
+from typing import List, Iterator
 import request_pb2
 import response_pb2
 import requests
+import argparse
+import os.path
 
 NUL_SOH = b'\x00\x01'
 NUL_NUL = b'\x00\x00'
@@ -85,8 +87,32 @@ class PBFunctions:
         return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
 
+def get_lines(file_path: str) -> Iterator[str]:
+    """
+    Returns the lines that are not empty of a given file path.
+    """
+    with open(file_path, 'r') as f:
+        song_names = f.read().split('\n')
+        return filter(None, song_names)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--limit", help="limit query results (default: 100)", type=int, default=100)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-b', '--bssid', nargs='+')
+    # group.add_argument('-f', '--file', help="load bssids from file", type=str, nargs='?')
+    args = parser.parse_args()
+    # return args.file, args.bssid, args.limit
+    return args.bssid, args.limit
+
+
 def main():
-    msg = PBFunctions.build_request(['E0:CE:C3:8C:1F:D7'])
+    # file, macs, query_limit = parse_args()
+    macs, query_limit = parse_args()
+    # if file:
+    #     macs = get_lines(file)
+    msg = PBFunctions.build_request(macs, query_limit)
     binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
     query_results = binary_handler.query()
     response = PBFunctions.parse_response(query_results)
