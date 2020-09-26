@@ -25,7 +25,7 @@ KML_FORMAT = """<?xml version="1.0" encoding="UTF-8"?>
 </kml>"""
 KML_PLACEMARK = """<Placemark>
     <name>{bssid}</name>
-    <description>hi</description>
+    <description></description>
     <Point>
         <coordinates>{longitude},{latitude},{altitude}</coordinates>
     </Point>
@@ -56,8 +56,8 @@ class BinaryHandler:
 
     def query(self) -> bytes:
         data = self.compose_data()
-        response = requests.post(URL, data=data, headers=HTTP_HEADERS)
-        return response.content
+        query_response = requests.post(URL, data=data, headers=HTTP_HEADERS)
+        return query_response.content
 
 
 class PBFunctions:
