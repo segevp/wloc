@@ -61,7 +61,6 @@ class BinaryHandler:
 
 
 class PBFunctions:
-
     @staticmethod
     def build_request(macs: List[str], limit: int = 100, noise: int = 0) -> request_pb2.Request:
         request_pb = request_pb2.Request()
