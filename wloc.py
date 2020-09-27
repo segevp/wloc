@@ -166,6 +166,7 @@ def main():
         macs = get_lines(file) if file else macs
     elif to_sniff:
         macs = sniff_for_ssids()
+        query_limit = len(macs)
     response = query_macs(macs, query_limit)
     kml = PBFunctions.create_kml(response, macs if to_sniff else None)
     with open('out.kml', 'w') as f:
