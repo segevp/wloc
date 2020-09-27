@@ -155,7 +155,7 @@ def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]
 
 
 def update_ssids(bssids_ssids: Dict[str, str], pkt):
-    bssid_ssid = {pkt.addr2: str(pkt.info)}
+    bssid_ssid = {pkt.addr2: pkt.info.decode()}
     bssids_ssids.update(bssid_ssid)
     return '\r' + SNIFFER_PROGRESS % len(bssids_ssids)
 
