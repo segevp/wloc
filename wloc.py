@@ -6,6 +6,7 @@ import response_pb2
 import requests
 import argparse
 from scapy.all import sniff
+from pprint import pformat
 
 NUL_SOH = b'\x00\x01'
 NUL_NUL = b'\x00\x00'
@@ -150,14 +151,14 @@ def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]
     print(SNIFFER_START % timeout)
     sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
           prn=lambda pkt: update_ssids(bssids_ssids, pkt))
-    print(SNIFFER_END.format(networks=bssids_ssids))
+    print(SNIFFER_END.format(networks=pformat(bssids_ssids)))
     return bssids_ssids
 
 
 def update_ssids(bssids_ssids: Dict[str, str], pkt):
     bssid_ssid = {pkt.addr2: pkt.info.decode()}
     bssids_ssids.update(bssid_ssid)
-    print('\r' + SNIFFER_PROGRESS % len(bssids_ssids))
+    print('\r' + SNIFFER_PROGRESS % len(bssids_ssids), end='')
 
 
 def main():
