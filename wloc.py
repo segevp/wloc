@@ -138,6 +138,7 @@ def query_macs(macs: List[str], query_limit: int):
 
 def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]:
     bssids_ssids = {}
+    print(SNIFFER_START % timeout)
     sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
           prn=lambda pkt: bssids_ssids.update({pkt.addr2: str(pkt.info)}))
     print(SNIFFER_END.format(networks=bssids_ssids))
