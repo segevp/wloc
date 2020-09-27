@@ -34,6 +34,10 @@ KML_PLACEMARK = """
             </Point>
         </Placemark>"""
 
+SNIFFER_START = "Started sniffing for %i seconds..."
+SNIFFER_PROGRESS = "Found %i BSSIDs and their names so far..."
+SNIFFER_END = "Done! Found the following networks:\n{networks}"
+
 
 class BinaryHandler:
     def __init__(self, headers: List[bytes] = None, serialized_message: bytes = None):
@@ -133,10 +137,17 @@ def query_macs(macs: List[str], query_limit: int):
 
 
 def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]:
-    bssid_ssid = {}
+    bssids_ssids = {}
     sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
-          prn=lambda pkt: bssid_ssid.update({pkt.addr2: pkt.info}))
-    return bssid_ssid
+          prn=lambda pkt: bssids_ssids.update({pkt.addr2: str(pkt.info)}))
+    print(SNIFFER_END.format(bssids_ssids))
+    return bssids_ssids
+
+
+def update_ssids(bssids_ssids: Dict[str, str], pkt):
+    bssid_ssid = {pkt.addr2: str(pkt.info)}
+    bssids_ssids.update(bssid_ssid)
+    print('\r' + SNIFFER_PROGRESS % len(bssids_ssids), end='')
 
 
 def main():
