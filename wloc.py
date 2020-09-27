@@ -129,6 +129,13 @@ def query_macs(macs: List[str], query_limit: int):
     return response
 
 
+def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> dict:
+    bssid_ssid = {}
+    sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
+          prn=lambda pkt: bssid_ssid.update({pkt.addr2: pkt.info}))
+    return bssid_ssid
+
+
 def main():
     file, macs, query_limit = parse_args()
     macs = get_lines(file) if file else macs
