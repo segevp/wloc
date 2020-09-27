@@ -140,14 +140,14 @@ def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]
     bssids_ssids = {}
     sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
           prn=lambda pkt: bssids_ssids.update({pkt.addr2: str(pkt.info)}))
-    print(SNIFFER_END.format(bssids_ssids))
+    print(SNIFFER_END.format(networks=bssids_ssids))
     return bssids_ssids
 
 
 def update_ssids(bssids_ssids: Dict[str, str], pkt):
     bssid_ssid = {pkt.addr2: str(pkt.info)}
     bssids_ssids.update(bssid_ssid)
-    print('\r' + SNIFFER_PROGRESS % len(bssids_ssids), end='')
+    return '\r' + SNIFFER_PROGRESS % len(bssids_ssids)
 
 
 def main():
