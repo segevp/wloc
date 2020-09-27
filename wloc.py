@@ -95,8 +95,8 @@ class PBFunctions:
             alt = wifi.location.altitude
             ssid = ssids.get(mac)
             placemarks.append(
-                KML_PLACEMARK.format(name=ssid if ssid else mac, description=mac, latitude=lat, longitude=lon,
-                                     altitude=alt))
+                KML_PLACEMARK.format(name=format_for_xml(ssid) if ssid else mac, description=mac, latitude=lat,
+                                     longitude=lon, altitude=alt))
         return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
     @staticmethod
@@ -106,6 +106,11 @@ class PBFunctions:
     @staticmethod
     def format_coordinate(coordinate):
         return coordinate * (10 ** -8)
+
+
+def format_for_xml(text: str) -> str:
+    formatted = text.replace('&', '&amp;')
+    return formatted
 
 
 def get_lines(file_path: str) -> Iterator[str]:
