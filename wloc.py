@@ -1,12 +1,13 @@
 #!/bin/env python3
 
-from typing import List, Iterator, Dict
+from typing import List, Dict
+from scapy.all import sniff
+from pprint import pformat
+from utils import *
 import request_pb2
 import response_pb2
 import requests
 import argparse
-from scapy.all import sniff
-from pprint import pformat
 
 NUL_SOH = b'\x00\x01'
 NUL_NUL = b'\x00\x00'
@@ -113,18 +114,23 @@ class PBFunctions:
         return coordinate * (10 ** -8)
 
 
-def format_for_xml(text: str) -> str:
-    formatted = text.replace('&', '&amp;')
-    return formatted
+class SniffHandler:
+    def __init__(self, iface: str = 'wlan0', timeout: int = 20):
+        self.iface = iface
+        self.timeout = timeout
+        self.bssids_ssids = {}
 
+    def sniff_for_ssids(self) -> Dict[str, bytes]:
+        print(SNIFFER_START % self.timeout)
+        sniff(iface=self.iface, timeout=self.timeout, filter='wlan type mgt subtype beacon',
+              prn=lambda pkt: self.update_ssids(pkt))
+        print(SNIFFER_END.format(networks=pformat(self.bssids_ssids)))
+        return self.bssids_ssids
 
-def get_lines(file_path: str) -> Iterator[str]:
-    """
-    Returns the lines that are not empty of a given file path.
-    """
-    with open(file_path, 'r') as f:
-        song_names = f.read().split('\n')
-        return filter(None, song_names)
+    def update_ssids(self, pkt):
+        bssid_ssid = {pkt.addr2: pkt.info.decode()}
+        self.bssids_ssids.update(bssid_ssid)
+        print('\r' + SNIFFER_PROGRESS % len(self.bssids_ssids), end='')
 
 
 def parse_args():
@@ -146,27 +152,13 @@ def query_macs(macs: List[str], query_limit: int):
     return response
 
 
-def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]:
-    bssids_ssids = {}
-    print(SNIFFER_START % timeout)
-    sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
-          prn=lambda pkt: update_ssids(bssids_ssids, pkt))
-    print(SNIFFER_END.format(networks=pformat(bssids_ssids)))
-    return bssids_ssids
-
-
-def update_ssids(bssids_ssids: Dict[str, str], pkt):
-    bssid_ssid = {pkt.addr2: pkt.info.decode()}
-    bssids_ssids.update(bssid_ssid)
-    print('\r' + SNIFFER_PROGRESS % len(bssids_ssids), end='')
-
-
 def main():
     file, macs, query_limit, to_sniff = parse_args()
     if file:
         macs = get_lines(file) if file else macs
     elif to_sniff:
-        macs = sniff_for_ssids()
+        sniff_handler = SniffHandler()
+        macs = sniff_handler.sniff_for_ssids()
         query_limit = len(macs)
     response = query_macs(macs, query_limit)
     kml = PBFunctions.create_kml(response, macs if to_sniff else None)
