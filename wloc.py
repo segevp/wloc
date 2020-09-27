@@ -3,11 +3,10 @@
 from typing import List, Dict
 from scapy.all import sniff
 from pprint import pformat
-from utils import *
-import request_pb2
-import response_pb2
-import requests
-import argparse
+from requests import post
+from argparse import ArgumentParser
+from utils import format_for_xml, get_lines
+from proto import request_pb2, response_pb2
 
 NUL_SOH = b'\x00\x01'
 NUL_NUL = b'\x00\x00'
@@ -66,7 +65,7 @@ class BinaryHandler:
 
     def query(self) -> bytes:
         data = self.compose_data()
-        query_response = requests.post(URL, data=data, headers=HTTP_HEADERS)
+        query_response = post(URL, data=data, headers=HTTP_HEADERS)
         return query_response.content
 
 
@@ -134,7 +133,7 @@ class SniffHandler:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument("-l", "--limit", help="limit query results (default: 100)", type=int, default=100)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-b', '--bssid', nargs='+')
