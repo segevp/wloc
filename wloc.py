@@ -80,7 +80,9 @@ class PBFunctions:
         return response_pb
 
     @classmethod
-    def create_kml(cls, response_pb: response_pb2.Response, ssids: dict = {}) -> str:
+    def create_kml(cls, response_pb: response_pb2.Response, ssids=None) -> str:
+        if ssids is None:
+            ssids = {}
         placemarks = []
         for wifi in response_pb.wifis:
             mac = cls.format_mac_address(wifi.mac)
@@ -117,8 +119,9 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-b', '--bssid', nargs='+')
     group.add_argument('-f', '--file', help="load bssids from file", type=str, nargs='?')
+    group.add_argument('-s', '--sniff', help="sniffs for bssids and ssids", action='store_true')
     args = parser.parse_args()
-    return args.file, args.bssid, args.limit
+    return args.file, args.bssid, args.limit, args.sniff
 
 
 def query_macs(macs: List[str], query_limit: int):
@@ -129,7 +132,7 @@ def query_macs(macs: List[str], query_limit: int):
     return response
 
 
-def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> dict:
+def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> Dict[str, bytes]:
     bssid_ssid = {}
     sniff(iface=iface, timeout=timeout, filter='wlan type mgt subtype beacon',
           prn=lambda pkt: bssid_ssid.update({pkt.addr2: pkt.info}))
@@ -137,10 +140,13 @@ def sniff_for_ssids(timeout: int = 20, iface: str = 'wlan0') -> dict:
 
 
 def main():
-    file, macs, query_limit = parse_args()
-    macs = get_lines(file) if file else macs
+    file, macs, query_limit, to_sniff = parse_args()
+    if file:
+        macs = get_lines(file) if file else macs
+    elif to_sniff:
+        macs = sniff_for_ssids()
     response = query_macs(macs, query_limit)
-    kml = PBFunctions.create_kml(response)
+    kml = PBFunctions.create_kml(response, macs if to_sniff else None)
     with open('out.kml', 'w') as f:
         f.write(kml)
 
