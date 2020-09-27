@@ -37,6 +37,7 @@ KML_PLACEMARK = """
 SNIFFER_START = "Started sniffing for %i seconds..."
 SNIFFER_PROGRESS = "Found %i BSSIDs and their names so far..."
 SNIFFER_END = "Done! Found the following networks:\n{networks}"
+LOCATION_NOT_FOUND = "* Location not found for {bssid}{ssid}"
 
 
 class BinaryHandler:
@@ -90,10 +91,13 @@ class PBFunctions:
         placemarks = []
         for wifi in response_pb.wifis:
             mac = cls.format_mac_address(wifi.mac)
+            ssid = ssids.get(mac)
+            if wifi.location.latitude == -18000000000:
+                print(LOCATION_NOT_FOUND.format(bssid=mac, ssid=f" - {ssid}" if ssid else ''))
+                continue
             lat = cls.format_coordinate(wifi.location.latitude)
             lon = cls.format_coordinate(wifi.location.longitude)
             alt = wifi.location.altitude
-            ssid = ssids.get(mac)
             placemarks.append(
                 KML_PLACEMARK.format(name=format_for_xml(ssid) if ssid else mac, description=mac, latitude=lat,
                                      longitude=lon, altitude=alt))
