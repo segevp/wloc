@@ -1,10 +1,11 @@
 #!/bin/env python3
 
-from typing import List, Iterator
+from typing import List, Iterator, Dict
 import request_pb2
 import response_pb2
 import requests
 import argparse
+from scapy.all import sniff
 
 NUL_SOH = b'\x00\x01'
 NUL_NUL = b'\x00\x00'
@@ -21,16 +22,17 @@ HTTP_RESPONSE_OFFSET = 10
 KML_FORMAT = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    {placemarks}
+{placemarks}
   </Document>
 </kml>"""
-KML_PLACEMARK = """<Placemark>
-    <name>{bssid}</name>
-    <description></description>
-    <Point>
-        <coordinates>{longitude},{latitude},{altitude}</coordinates>
-    </Point>
-</Placemark>"""
+KML_PLACEMARK = """
+        <Placemark>
+            <name>{name}</name>
+            <description>{description}</description>
+            <Point>
+                <coordinates>{longitude},{latitude},{altitude}</coordinates>
+            </Point>
+        </Placemark>"""
 
 
 class BinaryHandler:
@@ -78,11 +80,17 @@ class PBFunctions:
         return response_pb
 
     @classmethod
-    def create_kml(cls, response_pb: response_pb2.Response) -> str:
-        placemarks = [KML_PLACEMARK.format(bssid=cls.format_mac_address(wifi.mac),
-                                           latitude=cls.format_coordinate(wifi.location.latitude),
-                                           longitude=cls.format_coordinate(wifi.location.longitude),
-                                           altitude=wifi.location.altitude) for wifi in response_pb.wifis]
+    def create_kml(cls, response_pb: response_pb2.Response, ssids: dict = {}) -> str:
+        placemarks = []
+        for wifi in response_pb.wifis:
+            mac = cls.format_mac_address(wifi.mac)
+            lat = cls.format_coordinate(wifi.location.latitude)
+            lon = cls.format_coordinate(wifi.location.longitude)
+            alt = wifi.location.altitude
+            ssid = ssids.get(mac)
+            placemarks.append(
+                KML_PLACEMARK.format(name=ssid if ssid else mac, description=mac, latitude=lat, longitude=lon,
+                                     altitude=alt))
         return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
     @staticmethod
@@ -113,13 +121,18 @@ def parse_args():
     return args.file, args.bssid, args.limit
 
 
-def main():
-    file, macs, query_limit = parse_args()
-    macs = get_lines(file) if file else macs
+def query_macs(macs: List[str], query_limit: int):
     msg = PBFunctions.build_request(macs, query_limit)
     binary_handler = BinaryHandler(HEADERS, msg.SerializeToString())
     query_results = binary_handler.query()
     response = PBFunctions.parse_response(query_results)
+    return response
+
+
+def main():
+    file, macs, query_limit = parse_args()
+    macs = get_lines(file) if file else macs
+    response = query_macs(macs, query_limit)
     kml = PBFunctions.create_kml(response)
     with open('out.kml', 'w') as f:
         f.write(kml)
