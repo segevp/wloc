@@ -104,6 +104,25 @@ class PBFunctions:
                                      longitude=lon, altitude=alt))
         return KML_FORMAT.format(placemarks='\n'.join(placemarks))
 
+    @classmethod
+    def create_excel(cls, response_pb: response_pb2.Response, ssids=None) -> str:
+        rows = ['bssid,ssid,lat,lon,acc,alt,alt_acc']
+        if ssids is None:
+            ssids = {}
+        for wifi in response_pb.wifis:
+            mac = cls.format_mac_address(wifi.mac)
+            ssid = ssids.get(mac)
+            if wifi.location.latitude == -18000000000:
+                print(LOCATION_NOT_FOUND.format(bssid=mac, ssid=f" - {ssid}" if ssid else ''))
+                continue
+            lat = cls.format_coordinate(wifi.location.latitude)
+            lon = cls.format_coordinate(wifi.location.longitude)
+            acc = wifi.location.accuracy
+            alt = wifi.location.altitude
+            alt_acc = wifi.location.altitudeAccuracy
+            rows.append(f"{mac},{ssid},{lat},{lon},{acc},{alt},{alt_acc}")
+        return '\n'.join(rows)
+
     @staticmethod
     def format_mac_address(mac):
         return ':'.join([f'0{byte}' if len(byte) == 1 else byte for byte in mac.split(':')])
@@ -134,7 +153,7 @@ class SniffHandler:
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument("-l", "--limit", help="limit query results (default: 100)", type=int, default=100)
+    parser.add_argument("-l", "--limit", help="limit query results (default: 100)", type=int, default=400)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-b', '--bssid', nargs='+')
     group.add_argument('-f', '--file', help="load bssids from file", type=str, nargs='?')
@@ -160,7 +179,7 @@ def main():
         macs = sniff_handler.sniff_for_ssids()
         query_limit = len(macs)
     response = query_macs(macs, query_limit)
-    kml = PBFunctions.create_kml(response, macs if to_sniff else None)
+    kml = PBFunctions.create_excel(response, macs if to_sniff else None)
     with open('out.kml', 'w') as f:
         f.write(kml)
 
